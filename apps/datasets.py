@@ -84,13 +84,15 @@ def app():
         datasets = st.multiselect(
             "Select datasets",
             [
-                "USDA NASS Cropland",
-                "JRC Surface Water",
-                "NLCD",
-                "Esri Land Cover",
-                "ESA Land Cover",
-                "OpenStreetMap",
+                "ESA Global Land Cover",
+                "ESRI Global Land Cover",
+                "JRC Global Surface Water",
+                "HydroSHEDS - HydroLAKES",
+                "OSM Global Surface Water",
                 "Global River Width Dataset",
+                "USDA NASS Cropland",
+                "US NLCD",
+                "US NED Depressions",
                 "NHD-HUC2",
                 "NHD-HUC4",
                 "NHD-HUC6",
@@ -99,69 +101,16 @@ def app():
             ],
         )
 
-    # form = st.form(key="submit_form")
-    # submit = form.form_submit_button(label="Submit")
+    if "ESA Global Land Cover" in datasets:
+        dataset = ee.ImageCollection("ESA/WorldCover/v100").first().clip(roi).selfMask()
+        Map.addLayer(dataset, {}, "Landcover")
+        Map.add_legend(title="ESA Landcover", builtin_legend="ESA_WorldCover")
 
-    if "USDA NASS Cropland" in datasets:
-        cropland = (
-            ee.ImageCollection("USDA/NASS/CDL")
-            .select("cropland")
-            .filterDate("2010-01-01", "2020-01-01")
-        )
-
-        def extract_nass_water(img):
-            mask = img.remap([83, 87, 111, 190, 195], ee.List.sequence(991, 995)).gt(
-                990
-            )
-            result = img.updateMask(mask)
-            return result
-
-        nass_waters = cropland.map(extract_nass_water)
-        nass_water_2019 = nass_waters.filterDate("2019-01-01", "2019-12-31").first()
-        nass_water_max = nass_waters.map(lambda img: img.gt(0)).sum().selfMask()
-        Map.addLayer(
-            nass_water_max.randomVisualizer().clip(roi), {}, "NASS Max Water Extent"
-        )
-        Map.addLayer(nass_water_2019.clip(roi), {}, "NASS Water 2019")
-
-    if "JRC Surface Water" in datasets:
-        dataset = (
-            ee.ImageCollection("JRC/GSW1_3/MonthlyHistory")
-            .filter(ee.Filter.calendarRange(7, 8, "month"))
-            .map(lambda img: img.eq(2).selfMask())
-        )
-
-        visualization = {
-            "bands": ["water"],
-            "min": 0.0,
-            "max": 2.0,
-            "palette": ["ffffff", "fffcb8", "0905ff"],
-        }
-
-        Map.addLayer(
-            dataset.mosaic().clip(roi), {"palette": ["blue"]}, "JRC Monthly Water"
-        )
-
-    if "NLCD" in datasets:
-        dataset = ee.ImageCollection("USGS/NLCD_RELEASES/2016_REL")
-        nlcd = dataset.filter(
-            ee.Filter.inList("system:index", ["2001", "2006", "2011", "2016"])
-        ).select("landcover")
-
-        def extract_nlcd_water(img):
-            mask = img.remap([11, 90, 95], ee.List.sequence(991, 993)).gt(990)
-            result = img.updateMask(mask)
-            return result
-
-        nlcd_waters = nlcd.map(extract_nlcd_water)
-        nlcd_water_2016 = nlcd_waters.filterDate("2016-01-01", "2016-12-31").first()
-        Map.addLayer(nlcd_water_2016.clip(roi), {}, "NLCD Water 2016")
-
-    if "Esri Land Cover" in datasets:
+    if "ESRI Global Land Cover" in datasets:
 
         esri_lulc10 = ee.ImageCollection(
             "projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m"
-        ).mosaic()
+        )
         legend_dict = {
             "names": [
                 "Water",
@@ -190,46 +139,110 @@ def app():
         }
 
         vis_params = {"min": 1, "max": 10, "palette": legend_dict["colors"]}
-        Map.addLayer(esri_lulc10.clip(roi), vis_params, "ESRI LULC 10m", False)
-        Map.addLayer(
-            esri_lulc10.eq(1).clip(roi).selfMask(),
-            {"palette": "blue"},
-            "ESRI Water",
-            False,
-        )
+        Map.addLayer(esri_lulc10, vis_params, "ESRI Global Land Cover")
+        # Map.addLayer(
+        #     esri_lulc10.eq(1).clip(roi).selfMask(),
+        #     {"palette": "blue"},
+        #     "ESRI Water",
+        #     False,
+        # )
+        Map.add_legend(title="ESRI Landcover", builtin_legend="ESRI_LandCover")
 
-    if "ESA Land Cover" in datasets:
-        dataset = ee.ImageCollection("ESA/WorldCover/v100").first().clip(roi).selfMask()
-        Map.addLayer(dataset, {}, "Landcover")
+    if "JRC Global Surface Water" in datasets:
+        jrc = ee.Image("JRC/GSW1_3/GlobalSurfaceWater")
+        vis = {
+            "bands": ["occurrence"],
+            "min": 0.0,
+            "max": 100.0,
+            "palette": ["ffffff", "ffbbbb", "0000ff"],
+        }
+        Map.addLayer(jrc, vis, "JRC Global Surface Water")
+        Map.add_colorbar(vis, label="Surface water occurrence (%)")
+        # dataset = (
+        #     ee.ImageCollection("JRC/GSW1_3/MonthlyHistory")
+        #     .filter(ee.Filter.calendarRange(7, 8, "month"))
+        #     .map(lambda img: img.eq(2).selfMask())
+        # )
 
-    if "OpenStreetMap" in datasets:
-        osm_water = (
-            ee.ImageCollection("projects/sat-io/open-datasets/OSM_waterLayer")
-            .median()
-            .toInt()
-            .clip(roi.geometry())
+        # visualization = {
+        #     "bands": ["water"],
+        #     "min": 0.0,
+        #     "max": 2.0,
+        #     "palette": ["ffffff", "fffcb8", "0905ff"],
+        # }
+
+        # Map.addLayer(
+        #     dataset.mosaic().clip(roi), {"palette": ["blue"]}, "JRC Monthly Water"
+        # )
+
+    if "HydroSHEDS - HydroLAKES" in datasets:
+        hydrolakes = ee.FeatureCollection(
+            "projects/sat-io/open-datasets/HydroLakes/lake_poly_v10"
         )
+        Map.addLayer(hydrolakes, {"color": "#00008B"}, "HydroSHEDS - HydroLAKES")
+
+    if "OSM Global Surface Water" in datasets:
+        osm_water = ee.ImageCollection(
+            "projects/sat-io/open-datasets/OSM_waterLayer"
+        ).median()
         vis = {
             "min": 1,
             "max": 5,
             "palette": ["08306b", "08519c", "2171b5", "4292c6", "6baed6"],
         }
-        Map.addLayer(osm_water, vis, "OSM Water")
+        Map.addLayer(osm_water, vis, "OSM Global Surface Water")
+
+    if "USDA NASS Cropland" in datasets:
+        cropland = (
+            ee.ImageCollection("USDA/NASS/CDL")
+            .select("cropland")
+            .filterDate("2010-01-01", "2020-01-01")
+        )
+
+        def extract_nass_water(img):
+            mask = img.remap([83, 87, 111, 190, 195], ee.List.sequence(991, 995)).gt(
+                990
+            )
+            result = img.updateMask(mask)
+            return result
+
+        nass_waters = cropland.map(extract_nass_water)
+        nass_water_2019 = nass_waters.filterDate("2019-01-01", "2019-12-31").first()
+        nass_water_max = nass_waters.map(lambda img: img.gt(0)).sum().selfMask()
+        Map.addLayer(
+            nass_water_max.randomVisualizer().clip(roi), {}, "NASS Max Water Extent"
+        )
+        Map.addLayer(nass_water_2019.clip(roi), {}, "NASS Water 2019")
+
+    if "US NLCD" in datasets:
+        nlcd = ee.Image("USGS/NLCD_RELEASES/2019_REL/NLCD/2019").select("landcover")
+        Map.addLayer(nlcd, {}, "US NLCD 2019")
+        Map.add_legend(title="NLCD Land Cover", builtin_legend="NLCD")
+        # dataset = ee.ImageCollection("USGS/NLCD_RELEASES/2016_REL")
+        # nlcd = dataset.filter(
+        #     ee.Filter.inList("system:index", ["2001", "2006", "2011", "2016"])
+        # ).select("landcover")
+
+        # def extract_nlcd_water(img):
+        #     mask = img.remap([11, 90, 95], ee.List.sequence(991, 993)).gt(990)
+        #     result = img.updateMask(mask)
+        #     return result
+
+        # nlcd_waters = nlcd.map(extract_nlcd_water)
+        # nlcd_water_2016 = nlcd_waters.filterDate("2016-01-01", "2016-12-31").first()
+        # Map.addLayer(nlcd_water_2016.clip(roi), {}, "NLCD Water 2016")
 
     if "Global River Width Dataset" in datasets:
-        water_mask = (
-            ee.ImageCollection("projects/sat-io/open-datasets/GRWL/water_mask_v01_01")
-            .median()
-            .toInt()
-            .clip(roi.geometry())
-        )
+        water_mask = ee.ImageCollection(
+            "projects/sat-io/open-datasets/GRWL/water_mask_v01_01"
+        ).median()
 
         grwl_summary = ee.FeatureCollection(
             "projects/sat-io/open-datasets/GRWL/grwl_SummaryStats_v01_01"
-        ).filterBounds(roi)
+        )
         grwl_water_vector = ee.FeatureCollection(
             "projects/sat-io/open-datasets/GRWL/water_vector_v01_01"
-        ).filterBounds(roi)
+        )
 
         Map.addLayer(water_mask, {"palette": "blue"}, "GRWL RIver Mask")
         Map.addLayer(
@@ -242,6 +255,12 @@ def app():
             grwl_summary.style(**{"fillColor": "00000000", "color": "EE5500"}),
             {},
             "GRWL Centerline Simplified",
+        )
+
+    if "US NED Depressions" in datasets:
+        depressions = ee.FeatureCollection("users/giswqs/MRB/US_depressions")
+        Map.addLayer(
+            depressions.style(**{"fillColor": "00000020"}), {}, "US NED Depressions"
         )
 
     if "NHD-HUC2" in datasets:
@@ -266,7 +285,7 @@ def app():
 
     if select and country is not None:
         name = country
-        style["color"] = "#FFFF00"
+        style["color"] = "#000000"
         style["width"] = 2
     elif upload:
         name = "ROI"
