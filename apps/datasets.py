@@ -34,7 +34,6 @@ def app():
     with st.expander("How to use this app"):
 
         markdown = """
-        ### Instructions
         This interactive app allows you to explore and compare different datasets of Global Surface Water Extent (GSWE). How to use this web app?    
         - **Step 1:** Select a basemap from the dropdown menu on the right. The default basemap is `HYBRID`, a Google Satellite basemap with labels.   
         - **Step 2:** Select a region of interest (ROI) from the country dropdown menu or upload an ROI. The default ROI is the entire globe. 
@@ -44,7 +43,7 @@ def app():
 
     col1, col2 = st.columns([3, 1])
 
-    Map = geemap.Map(Draw_export=False, locate_control=True)
+    Map = geemap.Map(Draw_export=True, locate_control=True)
 
     roi = ee.FeatureCollection("users/giswqs/public/countries")
     countries = roi.aggregate_array("name").getInfo()
@@ -316,18 +315,21 @@ def app():
         huc10 = ee.FeatureCollection("USGS/WBD/2017/HUC10")
         Map.addLayer(huc10.style(**{"fillColor": "00000000"}), {}, "NHD-HUC10")
 
+    show = False
     if select and country is not None:
         name = country
         style["color"] = "#000000"
         style["width"] = 2
+        show = True
     elif upload:
         name = "ROI"
         style["color"] = "#FFFF00"
         style["width"] = 2
+        show = True
     else:
         name = "World"
 
-    Map.addLayer(st.session_state["ROI"].style(**style), {}, name, False)
+    Map.addLayer(st.session_state["ROI"].style(**style), {}, name, show)
     Map.centerObject(st.session_state["ROI"])
 
     with col1:
