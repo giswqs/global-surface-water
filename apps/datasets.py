@@ -289,8 +289,8 @@ def app():
 
     if "US NED Depressions" in datasets:
         depressions = ee.FeatureCollection("users/giswqs/MRB/US_depressions")
-        if st.session_state["ROI"] is not None:
-            depressions = depressions.filterBounds(st.session_state["ROI"])
+        # if st.session_state["ROI"] is not None:
+        #     depressions = depressions.filterBounds(st.session_state["ROI"])
         Map.addLayer(
             depressions.style(**{"fillColor": "00000020"}), {}, "US NED Depressions"
         )
@@ -333,13 +333,26 @@ def app():
     Map.centerObject(st.session_state["ROI"])
 
     with col1:
-        Map.to_streamlit(height=750)
+        Map.to_streamlit(height=680)
 
     with col2:
         with st.expander("Data Sources"):
 
             desc = """
-                - [Global Surface Water Extent (GSWE) Datasets](https://www.earthdata.nasa.gov/features/gswe/datasets)
-            
+                - [ESA Global Land Cover](https://developers.google.com/earth-engine/datasets/catalog/ESA_WorldCover_v100?hl=en)
+                - [ESRI Global Land Cover](https://samapriya.github.io/awesome-gee-community-datasets/projects/esrilc2020/)
+                - [Global River Width Dataset](https://samapriya.github.io/awesome-gee-community-datasets/projects/grwl/)
+                - [JRC Global Surface Water](https://developers.google.com/earth-engine/datasets/catalog/JRC_GSW1_3_GlobalSurfaceWater)
+                - [HydroSHEDS - HydroLAKES](https://samapriya.github.io/awesome-gee-community-datasets/projects/hydrolakes/)
+                - [OSM Global Surface Water](https://samapriya.github.io/awesome-gee-community-datasets/projects/osm_water/)
+                - [US NLCD](https://developers.google.com/earth-engine/datasets/catalog/USGS_NLCD_RELEASES_2019_REL_NLCD)
+                - [US NED Depressions (10m)](https://developers.google.com/earth-engine/datasets/catalog/USGS_3DEP_10m)
+                - [USDA NASS Cropland](https://developers.google.com/earth-engine/datasets/catalog/USDA_NASS_CDL)
+                - [NHD Waterboday](https://samapriya.github.io/awesome-gee-community-datasets/projects/nhd)
+                - [NHD-HUC2](https://developers.google.com/earth-engine/datasets/catalog/USGS_WBD_2017_HUC02)
+                - [NHD-HUC4](https://developers.google.com/earth-engine/datasets/catalog/USGS_WBD_2017_HUC04)
+                - [NHD-HUC6](https://developers.google.com/earth-engine/datasets/catalog/USGS_WBD_2017_HUC06)
+                - [NHD-HUC8](https://developers.google.com/earth-engine/datasets/catalog/USGS_WBD_2017_HUC08)
+                - [NHD-HUC10](https://developers.google.com/earth-engine/datasets/catalog/USGS_WBD_2017_HUC10)
             """
             st.markdown(desc)
