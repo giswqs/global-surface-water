@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
-from apps import home, datasets  # import your app modules here
+from apps import home, datasets, split  # import your app modules here
 
 st.set_page_config(page_title="Global Surface Water App", layout="wide")
 
@@ -10,7 +10,7 @@ st.set_page_config(page_title="Global Surface Water App", layout="wide")
 apps = [
     {"func": home.app, "title": "Home", "icon": "house"},
     {"func": datasets.app, "title": "Datasets", "icon": "map"},
-    # {"func": upload.app, "title": "Upload", "icon": "cloud-upload"},
+    {"func": split.app, "title": "Split-panel Map", "icon": "layout-split"},
 ]
 
 titles = [app["title"] for app in apps]
@@ -38,6 +38,7 @@ with st.sidebar:
         """
         **Web App URL:** 
         <https://gsw.gishub.org>
+        **Source Code available on [GitHub](https://github.com/giswqs/global-surface-water)**
 
         **Contact:**
         - [Adnan Rajib](https://www.tamuk.edu/engineering/departments/even/faculty-and-staff/adnan-rajib.html)

@@ -7,7 +7,7 @@ def app():
 
     st.markdown(
         """
-    Select **Datasets** from the Main Menu to explore global surface water datasets interatively.
+    Select **Datasets** or **Split-panel Map** from the Main Menu to explore global surface water datasets interatively.
 
     """
     )

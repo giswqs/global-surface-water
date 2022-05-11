@@ -29,17 +29,28 @@ def uploaded_file_to_gdf(data):
 
 def app():
 
-    st.title("Global Surface Water Datasets")
+    st.title("Global Surface Water Explorer")
+
+    with st.expander("How to use this app"):
+
+        markdown = """
+        ### Instructions
+        This interactive app allows you to explore and compare different datasets of Global Surface Water Extent (GSWE). How to use this web app?    
+        - **Step 1:** Select a basemap from the dropdown menu on the right. The default basemap is `HYBRID`, a Google Satellite basemap with labels.   
+        - **Step 2:** Select a region of interest (ROI) from the country dropdown menu or upload an ROI. The default ROI is the entire globe. 
+        - **Step 3:** Select surface water datasets from the dropdown menu. You can select multiple datasets to display on the map.
+        """
+        st.markdown(markdown)
 
     col1, col2 = st.columns([3, 1])
 
-    Map = geemap.Map(Draw_export=True, locate_control=True)
+    Map = geemap.Map(Draw_export=False, locate_control=True)
 
     roi = ee.FeatureCollection("users/giswqs/public/countries")
     countries = roi.aggregate_array("name").getInfo()
     countries.sort()
 
-    basemaps = list(geemap.basemaps.keys())
+    basemaps = list(geemap.basemaps.keys())[:5]
     with col2:
         basemap = st.selectbox(
             "Select a basemap",
@@ -82,7 +93,7 @@ def app():
     # select_holder = col2.empty()
     with col2:
         datasets = st.multiselect(
-            "Select datasets",
+            "Select surface water datasets",
             [
                 "ESA Global Land Cover",
                 "ESRI Global Land Cover",
@@ -102,7 +113,10 @@ def app():
         )
 
     if "ESA Global Land Cover" in datasets:
-        dataset = ee.ImageCollection("ESA/WorldCover/v100").first().clip(roi).selfMask()
+        dataset = ee.ImageCollection("ESA/WorldCover/v100").first()
+        if st.session_state["ROI"] is not None:
+            dataset = dataset.clipToCollection(st.session_state["ROI"])
+
         Map.addLayer(dataset, {}, "Landcover")
         Map.add_legend(title="ESA Landcover", builtin_legend="ESA_WorldCover")
 
@@ -139,6 +153,8 @@ def app():
         }
 
         vis_params = {"min": 1, "max": 10, "palette": legend_dict["colors"]}
+        if st.session_state["ROI"] is not None:
+            esri_lulc10 = esri_lulc10.mosaic().clipToCollection(st.session_state["ROI"])
         Map.addLayer(esri_lulc10, vis_params, "ESRI Global Land Cover")
         # Map.addLayer(
         #     esri_lulc10.eq(1).clip(roi).selfMask(),
@@ -179,6 +195,8 @@ def app():
         hydrolakes = ee.FeatureCollection(
             "projects/sat-io/open-datasets/HydroLakes/lake_poly_v10"
         )
+        if st.session_state["ROI"] is not None:
+            hydrolakes = hydrolakes.filterBounds(st.session_state["ROI"])
         Map.addLayer(hydrolakes, {"color": "#00008B"}, "HydroSHEDS - HydroLAKES")
 
     if "OSM Global Surface Water" in datasets:
@@ -190,6 +208,8 @@ def app():
             "max": 5,
             "palette": ["08306b", "08519c", "2171b5", "4292c6", "6baed6"],
         }
+        if st.session_state["ROI"] is not None:
+            osm_water = osm_water.clipToCollection(st.session_state["ROI"])
         Map.addLayer(osm_water, vis, "OSM Global Surface Water")
 
     if "USDA NASS Cropland" in datasets:
@@ -209,6 +229,11 @@ def app():
         nass_waters = cropland.map(extract_nass_water)
         nass_water_2019 = nass_waters.filterDate("2019-01-01", "2019-12-31").first()
         nass_water_max = nass_waters.map(lambda img: img.gt(0)).sum().selfMask()
+
+        if st.session_state["ROI"] is not None:
+            nass_water_2019 = nass_water_2019.clipToCollection(st.session_state["ROI"])
+            nass_water_max = nass_water_max.clipToCollection(st.session_state["ROI"])
+
         Map.addLayer(
             nass_water_max.randomVisualizer().clip(roi), {}, "NASS Max Water Extent"
         )
@@ -216,6 +241,8 @@ def app():
 
     if "US NLCD" in datasets:
         nlcd = ee.Image("USGS/NLCD_RELEASES/2019_REL/NLCD/2019").select("landcover")
+        if st.session_state["ROI"] is not None:
+            nlcd = nlcd.clipToCollection(st.session_state["ROI"])
         Map.addLayer(nlcd, {}, "US NLCD 2019")
         Map.add_legend(title="NLCD Land Cover", builtin_legend="NLCD")
         # dataset = ee.ImageCollection("USGS/NLCD_RELEASES/2016_REL")
@@ -244,6 +271,10 @@ def app():
             "projects/sat-io/open-datasets/GRWL/water_vector_v01_01"
         )
 
+        if st.session_state["ROI"] is not None:
+            water_mask = water_mask.clipToCollection(st.session_state["ROI"])
+            grwl_summary = grwl_summary.filterBounds(st.session_state["ROI"])
+
         Map.addLayer(water_mask, {"palette": "blue"}, "GRWL RIver Mask")
         Map.addLayer(
             grwl_water_vector.style(**{"fillColor": "00000000", "color": "FF5500"}),
@@ -259,6 +290,8 @@ def app():
 
     if "US NED Depressions" in datasets:
         depressions = ee.FeatureCollection("users/giswqs/MRB/US_depressions")
+        if st.session_state["ROI"] is not None:
+            depressions = depressions.filterBounds(st.session_state["ROI"])
         Map.addLayer(
             depressions.style(**{"fillColor": "00000020"}), {}, "US NED Depressions"
         )
@@ -294,8 +327,17 @@ def app():
     else:
         name = "World"
 
-    Map.addLayer(st.session_state["ROI"].style(**style), {}, name)
+    Map.addLayer(st.session_state["ROI"].style(**style), {}, name, False)
     Map.centerObject(st.session_state["ROI"])
 
     with col1:
         Map.to_streamlit(height=750)
+
+    with col2:
+        with st.expander("Data Sources"):
+
+            desc = """
+                - [Global Surface Water Extent (GSWE) Datasets](https://www.earthdata.nasa.gov/features/gswe/datasets)
+            
+            """
+            st.markdown(desc)
