@@ -111,12 +111,22 @@ def app():
             ],
         )
 
+        if datasets:
+            water_only = st.checkbox("Show only water")
+            if water_only:
+                show_wetlands = st.checkbox("Include wetlands", True)
+
     if "ESA Global Land Cover" in datasets:
         dataset = ee.ImageCollection("ESA/WorldCover/v100").first()
+        if water_only:
+            if show_wetlands:
+                dataset = dataset.updateMask(dataset.eq(80).Or(dataset.eq(90)))
+            else:
+                dataset = dataset.updateMask(dataset.eq(80))
         if st.session_state["ROI"] is not None:
             dataset = dataset.clipToCollection(st.session_state["ROI"])
 
-        Map.addLayer(dataset, {}, "Landcover")
+        Map.addLayer(dataset, {}, "ESA Landcover")
         Map.add_legend(title="ESA Landcover", builtin_legend="ESA_WorldCover")
 
     if "ESRI Global Land Cover" in datasets:
@@ -152,8 +162,17 @@ def app():
         }
 
         vis_params = {"min": 1, "max": 10, "palette": legend_dict["colors"]}
+        esri_lulc10 = esri_lulc10.mosaic()
+        if water_only:
+            if show_wetlands:
+                esri_lulc10 = esri_lulc10.updateMask(
+                    esri_lulc10.eq(1).Or(esri_lulc10.eq(4))
+                )
+            else:
+                esri_lulc10 = esri_lulc10.updateMask(esri_lulc10.eq(1))
+
         if st.session_state["ROI"] is not None:
-            esri_lulc10 = esri_lulc10.mosaic().clipToCollection(st.session_state["ROI"])
+            esri_lulc10 = esri_lulc10.clipToCollection(st.session_state["ROI"])
         Map.addLayer(esri_lulc10, vis_params, "ESRI Global Land Cover")
         # Map.addLayer(
         #     esri_lulc10.eq(1).clip(roi).selfMask(),
@@ -169,7 +188,7 @@ def app():
             "bands": ["occurrence"],
             "min": 0.0,
             "max": 100.0,
-            "palette": ["ffffff", "ffbbbb", "0000ff"],
+            "palette": cm.palettes.coolwarm_r,
         }
         Map.addLayer(jrc, vis, "JRC Global Surface Water")
         Map.add_colorbar(vis, label="Surface water occurrence (%)")
@@ -219,9 +238,7 @@ def app():
         )
 
         def extract_nass_water(img):
-            mask = img.remap([83, 87, 111, 190, 195], ee.List.sequence(991, 995)).gt(
-                990
-            )
+            mask = img.remap([83, 87, 111, 190], ee.List.sequence(991, 994)).gt(990)
             result = img.updateMask(mask)
             return result
 
@@ -240,6 +257,11 @@ def app():
 
     if "US NLCD" in datasets:
         nlcd = ee.Image("USGS/NLCD_RELEASES/2019_REL/NLCD/2019").select("landcover")
+        if water_only:
+            if show_wetlands:
+                nlcd = nlcd.updateMask(nlcd.eq(11).Or(nlcd.eq(95)))
+            else:
+                nlcd = nlcd.updateMask(nlcd.eq(11))
         if st.session_state["ROI"] is not None:
             nlcd = nlcd.clipToCollection(st.session_state["ROI"])
         Map.addLayer(nlcd, {}, "US NLCD 2019")
