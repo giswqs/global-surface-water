@@ -39,10 +39,6 @@ with st.sidebar:
         **Web App URL:** 
         <https://gsw.gishub.org>
         **Source Code available on [GitHub](https://github.com/giswqs/global-surface-water)**
-
-        **Contact:**
-        - [Adnan Rajib](https://www.tamuk.edu/engineering/departments/even/faculty-and-staff/adnan-rajib.html)
-        - [Qiusheng Wu](https://geography.utk.edu/about-us/faculty/dr-qiusheng-wu)
     """
     )
 
