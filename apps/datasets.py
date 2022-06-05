@@ -43,14 +43,24 @@ def app():
 
     col1, col2 = st.columns([3, 1])
 
-    Map = geemap.Map(Draw_export=True, locate_control=True)
+    Map = geemap.Map(Draw_export=True, locate_control=True, plugin_LatLngPopup=True)
 
     roi = ee.FeatureCollection("users/giswqs/public/countries")
     countries = roi.aggregate_array("name").getInfo()
     countries.sort()
 
-    basemaps = list(geemap.basemaps.keys())[:5]
+    basemaps = list(geemap.basemaps.keys())[:5] + [
+        "ESA WorldCover 2020",
+        "NLCD 2019 CONUS Land Cover",
+    ]
     with col2:
+
+        latitude = st.number_input("Map center latitude", -90.0, 90.0, 40.0, step=0.5)
+        longitude = st.number_input(
+            "Map center longitude", -180.0, 180.0, -100.0, step=0.5
+        )
+        zoom = st.slider("Map zoom level", 1, 22, 4)
+
         basemap = st.selectbox(
             "Select a basemap",
             basemaps,
@@ -355,6 +365,7 @@ def app():
     Map.centerObject(st.session_state["ROI"])
 
     with col1:
+        Map.set_center(longitude, latitude, zoom)
         Map.to_streamlit(height=680)
 
     with col2:
