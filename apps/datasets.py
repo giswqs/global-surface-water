@@ -202,7 +202,6 @@ def app():
             ],
         )
 
-    width = 1
     # styles = {
     #     "ESA Land Use": {
     #         "color": "dca0dcff",
@@ -236,6 +235,7 @@ def app():
     #     },
     # }
 
+    width = 1
     styles = {
         "ESA Land Use": {
             "color": "000000ff",
