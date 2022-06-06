@@ -43,7 +43,7 @@ def app():
 
     col1, col2 = st.columns([3, 1])
 
-    Map = geemap.Map(Draw_export=True, locate_control=True)
+    Map = geemap.Map(Draw_export=False, locate_control=True, plugin_LatLngPopup=True)
 
     roi = ee.FeatureCollection("users/giswqs/public/countries")
     # countries = roi.aggregate_array("name").getInfo()
