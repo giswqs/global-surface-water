@@ -3,7 +3,7 @@ import leafmap.foliumap as leafmap
 
 
 def app():
-    st.title("Home")
+    st.title("Global Surface Water Information System (GSWIS)")
 
     st.markdown(
         """

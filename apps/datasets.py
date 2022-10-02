@@ -29,7 +29,7 @@ def uploaded_file_to_gdf(data):
 
 def app():
 
-    st.title("Global Surface Water Explorer")
+    st.title("Global Surface Water Datasets")
 
     with st.expander("How to use this app"):
 
